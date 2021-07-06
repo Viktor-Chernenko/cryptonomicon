@@ -109,12 +109,100 @@
             Добавить
           </button>
         </section>
-
-        <template v-if="tickers.length">
+        <div class="filter flex items-start">
+          <input
+            type="text"
+            v-model="filter"
+            class="
+              filter__input
+              pr-10
+              mr-10
+              border-gray-300
+              text-gray-900
+              focus:outline-none focus:ring-gray-500 focus:border-gray-500
+              sm:text-sm
+              rounded-md
+            "
+          />
+          <div class="filter-btns">
+            <button
+              type="button"
+              @click="pageListTickers -= 1"
+              :class="{
+                'opacity-10':
+                  pageListTickers === 0 || filteredTickers.length === 0,
+              }"
+              class="
+                transition-opacity
+                duration-300
+                inline-flex
+                items-center
+                py-2
+                px-4
+                mr-3
+                border border-transparent
+                shadow-sm
+                text-sm
+                leading-4
+                font-medium
+                rounded-full
+                text-white
+                bg-gray-600
+                hover:bg-gray-700
+                transition-colors
+                duration-300
+                focus:outline-none
+                focus:ring-2
+                focus:ring-offset-2
+                focus:ring-gray-500
+              "
+            >
+              Назад
+            </button>
+            <button
+              type="button"
+              @click="pageListTickers += 1"
+              :class="{
+                'opacity-10':
+                  pageListTickers === maxItemsFilterTicketsList ||
+                  filteredTickers.length === 0,
+              }"
+              class="
+                transition-opacity
+                duration-300
+                inline-flex
+                items-center
+                py-2
+                px-4
+                border border-transparent
+                shadow-sm
+                text-sm
+                leading-4
+                font-medium
+                rounded-full
+                text-white
+                bg-gray-600
+                hover:bg-gray-700
+                transition-colors
+                duration-300
+                focus:outline-none
+                focus:ring-2
+                focus:ring-offset-2
+                focus:ring-gray-500
+              "
+            >
+              Вперед
+            </button>
+          </div>
+        </div>
+        <div>
           <hr class="w-full border-t border-gray-600 my-4" />
-          <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
+          <dl
+            v-if="filteredTickers.length"
+            class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3"
+          >
             <div
-              v-for="item in tickers"
+              v-for="item in filteredTickers"
               :key="item.id"
               @click="changeActiveTicket(item)"
               :class="{
@@ -172,8 +260,24 @@
               </button>
             </div>
           </dl>
+          <div v-else>
+            <h3
+              class="
+                text-lg
+                leading-6
+                font-medium
+                text-gray-900
+                my-8
+                text-red-500
+                font-bold
+              "
+            >
+              Nothing was found
+            </h3>
+          </div>
           <hr class="w-full border-t border-gray-600 my-4" />
-        </template>
+        </div>
+
         <section v-if="activeItemGraph" class="relative">
           <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
             VUE - USD
@@ -226,6 +330,7 @@ export default {
   name: "App",
 
   data: () => ({
+    filter: "",
     tickerName: null,
     messageAboutPreviouslyAddedTicker: false,
     activeItemGraph: null,
@@ -235,6 +340,7 @@ export default {
     intervalUpdateTickersСurrency: false,
     tickersNameViewedList: "",
     tickersNameListHints: [],
+    pageListTickers: 0,
   }),
 
   methods: {
@@ -247,6 +353,8 @@ export default {
       if (this.activeItemGraph?.id === tickerId) {
         (this.graph = []), (this.activeItemGraph = null);
       }
+
+      localStorage.setItem("ListTickers", JSON.stringify(this.tickers));
     },
 
     // смена элемента для отслеживания с помощью графика
@@ -286,7 +394,7 @@ export default {
     // Добавления нового значения курса в отслеживаемый с помощью графика элемент
     addGraphItem() {
       this.graph.push(this.activeItemGraph.course);
-      if (this.graph.length > 40) {
+      if (this.graph.length > 25) {
         this.graph.shift();
       }
     },
@@ -321,6 +429,8 @@ export default {
           this.tickerName = null;
         }
       }
+
+      localStorage.setItem("ListTickers", JSON.stringify(this.tickers));
     },
 
     // Подсказки имён криптовалюты при вводе в input
@@ -349,6 +459,35 @@ export default {
         (price) => 50 + ((price - minValue) * 50) / (maxValue - minValue)
       );
     },
+
+    // Получаем максимальное число элементов в отфильтрованном списке
+    maxItemsFilterTicketsList() {
+      const filteredList = this.tickers.filter((item) =>
+        item.name.includes(this.filter.toUpperCase())
+      );
+
+      let maxPage;
+
+      if (filteredList.length % 6 === 0) {
+        maxPage = filteredList.length / 6 - 1;
+      } else {
+        maxPage = Math.floor(filteredList.length / 6);
+      }
+
+      return maxPage;
+    },
+
+    // Фильтрация списка тикеров
+    filteredTickers() {
+      const startItem = 6 * this.pageListTickers;
+      const endItem = 6 * this.pageListTickers + 6;
+
+      const filteredList = this.tickers.filter((item) =>
+        item.name.includes(this.filter.toUpperCase())
+      );
+
+      return filteredList.slice(startItem, endItem);
+    },
   },
 
   watch: {
@@ -365,8 +504,6 @@ export default {
       } else {
         this.updateTickersСurrency(true);
       }
-
-      localStorage.setItem("ListTickers", JSON.stringify(newValue));
     },
 
     graph() {
@@ -377,6 +514,35 @@ export default {
       if (!newValue) {
         this.updateGraph(true);
       }
+    },
+
+    pageListTickers(newValue) {
+      const filteredList = this.tickers.filter((item) =>
+        item.name.includes(this.filter.toUpperCase())
+      );
+      let maxPage;
+
+      if (filteredList.length % 6 === 0) {
+        maxPage = filteredList.length / 6 - 1;
+      } else {
+        maxPage = Math.floor(filteredList.length / 6);
+      }
+
+      if (newValue < 0) {
+        this.pageListTickers = 0;
+      }
+
+      if (newValue > maxPage) {
+        this.pageListTickers = maxPage;
+      }
+
+      if (this.filteredTickers.length === 0) {
+        this.pageListTickers = 0;
+      }
+    },
+
+    filter() {
+      this.pageListTickers = 0;
     },
   },
 
