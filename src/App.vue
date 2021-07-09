@@ -15,7 +15,7 @@
                   v-model="tickerName"
                   type="text"
                   @keyup="
-                    hintsNamesCryptocurrencyAdding();
+                    hintsNamesCryptoCurrencyAdding();
                     messageAboutPreviouslyAddedTicker = false;
                   "
                   @keyup.enter="addTicket()"
@@ -280,7 +280,7 @@
 
         <section v-if="activeItemGraph" class="relative">
           <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
-            VUE - USD
+            {{ activeItemGraph.name }} - USD
           </h3>
           <div class="flex items-end border-gray-600 border-b border-l h-64">
             <div
@@ -324,7 +324,11 @@
 </template>
 
 <script>
-import { loadTickers } from "./api/tickers";
+import {
+  socketSendAddTickers,
+  updateTickers,
+  socketSendRemoveTickers,
+} from "./api/tickers";
 
 export default {
   name: "App",
@@ -336,8 +340,6 @@ export default {
     activeItemGraph: null,
     tickers: [],
     graph: [],
-    intervalUpdateGraph: false,
-    intervalUpdateTickersСurrency: false,
     tickersNameViewedList: "",
     tickersNameListHints: [],
     pageListTickers: 0,
@@ -346,7 +348,11 @@ export default {
   methods: {
     // удаление тикера
     removeTicker(tickerId) {
+      let removeItem;
       this.tickers = this.tickers.filter((item) => {
+        if (item.id == tickerId) {
+          removeItem = item;
+        }
         return item.id != tickerId;
       });
 
@@ -355,6 +361,8 @@ export default {
       }
 
       localStorage.setItem("ListTickers", JSON.stringify(this.tickers));
+
+      socketSendRemoveTickers(removeItem);
     },
 
     // смена элемента для отслеживания с помощью графика
@@ -364,50 +372,9 @@ export default {
       this.graph.push(this.activeItemGraph.course);
     },
 
-    // Получение курса криптовалют
-    async getAListOfPrices() {
-      const dataTickersСurrency = await loadTickers(this.tickersNameViewedList);
-      Object.keys(dataTickersСurrency).forEach((item) => {
-        const index = this.tickers.findIndex((el) => el.name === item);
-        const newCurrency =
-          dataTickersСurrency[item].USD < 1
-            ? dataTickersСurrency[item].USD.toPrecision(2)
-            : dataTickersСurrency[item].USD.toFixed(2);
-        this.tickers[index].course = newCurrency;
-      });
-    },
-
     // Обновление цен
-    updateTickersСurrency(stop) {
-      clearInterval(this.intervalUpdateTickersСurrency);
-      if (stop) {
-        clearInterval(this.intervalUpdateTickersСurrency);
-        return;
-      } else {
-        this.intervalUpdateTickersСurrency = setInterval(
-          this.getAListOfPrices,
-          2000
-        );
-      }
-    },
-
-    // Добавления нового значения курса в отслеживаемый с помощью графика элемент
-    addGraphItem() {
-      this.graph.push(this.activeItemGraph.course);
-      if (this.graph.length > 25) {
-        this.graph.shift();
-      }
-    },
-
-    // Обновление графика
-    updateGraph(stop) {
-      clearInterval(this.intervalUpdateGraph);
-      if (stop) {
-        clearInterval(this.intervalUpdateGraph);
-        return;
-      } else {
-        this.intervalUpdateGraph = setInterval(this.addGraphItem, 2000);
-      }
+    updateTickersСurrency() {
+      this.tickers = updateTickers(this.tickers);
     },
 
     // добавление тикера
@@ -427,6 +394,8 @@ export default {
           this.tickers.unshift(newTicker);
           this.tickersNameListHints = [];
           this.tickerName = null;
+
+          socketSendAddTickers(newTicker);
         }
       }
 
@@ -434,7 +403,7 @@ export default {
     },
 
     // Подсказки имён криптовалюты при вводе в input
-    hintsNamesCryptocurrencyAdding() {
+    hintsNamesCryptoCurrencyAdding() {
       let valueInput = this.tickerName.toUpperCase();
 
       let listSimilarNames = this.tickersNameList.filter((item) => {
@@ -491,28 +460,18 @@ export default {
   },
 
   watch: {
-    tickers(newValue) {
-      const tickersName = newValue.reduce((acc, ticker) => {
-        acc.push(ticker.name);
-        return acc;
-      }, []);
-
-      this.tickersNameViewedList = tickersName.join();
-
-      if (newValue.length) {
-        this.updateTickersСurrency(false);
-      } else {
-        this.updateTickersСurrency(true);
-      }
+    tickers() {
+      this.updateTickersСurrency();
     },
 
-    graph() {
-      this.updateGraph(false);
+    activeItemGraph() {
+      this.graph = [];
     },
 
-    activeItemGraph(newValue) {
-      if (!newValue) {
-        this.updateGraph(true);
+    "activeItemGraph.course"(newValue) {
+      this.graph.push(newValue);
+      if (this.graph.length > 25) {
+        this.graph.shift();
       }
     },
 
@@ -575,6 +534,9 @@ export default {
       }, []);
       if (ListTickers) {
         vue.tickers = ListTickers;
+        ListTickers.forEach((ticker) => {
+          socketSendAddTickers(ticker);
+        });
       }
     })();
   },
