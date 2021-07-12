@@ -2,199 +2,15 @@
   <div id="app">
     <div class="container mx-auto flex flex-col items-center p-4">
       <div class="container">
-        <section>
-          <div class="flex">
-            <div class="max-w-xs">
-              <label
-                for="wallet"
-                class="block text-sm font-medium text-gray-700"
-                >Тикер</label
-              >
-              <div class="mt-1 relative rounded-md shadow-md">
-                <input
-                  v-model="tickerName"
-                  type="text"
-                  @keyup="
-                    hintsNamesCryptoCurrencyAdding();
-                    messageAboutPreviouslyAddedTicker = false;
-                  "
-                  @keyup.enter="addTicket()"
-                  name="wallet"
-                  id="wallet"
-                  class="
-                    block
-                    w-full
-                    pr-10
-                    border-gray-300
-                    text-gray-900
-                    focus:outline-none focus:ring-gray-500 focus:border-gray-500
-                    sm:text-sm
-                    rounded-md
-                  "
-                  placeholder="Например DOGE"
-                />
-              </div>
-              <div
-                class="flex p-1 rounded-md flex-wrap"
-                v-if="tickersNameListHints.length"
-              >
-                <span
-                  class="
-                    inline-flex
-                    items-center
-                    px-2
-                    m-1
-                    rounded-md
-                    text-xs
-                    font-medium
-                    bg-gray-300
-                    text-gray-800
-                    cursor-pointer
-                  "
-                  @click="addTicket(tickerName)"
-                  v-for="(tickerName, index) in tickersNameListHints"
-                  :key="index"
-                >
-                  {{ tickerName }}
-                </span>
-                <hr class="w-full border-t border-gray-400" />
-              </div>
-              <div
-                class="text-sm text-red-600"
-                v-if="messageAboutPreviouslyAddedTicker"
-              >
-                Такой тикер уже добавлен
-              </div>
-            </div>
-          </div>
-          <button
-            type="button"
-            @click="addTicket()"
-            class="
-              my-4
-              inline-flex
-              items-center
-              py-2
-              px-4
-              border border-transparent
-              shadow-sm
-              text-sm
-              leading-4
-              font-medium
-              rounded-full
-              text-white
-              bg-gray-600
-              hover:bg-gray-700
-              transition-colors
-              duration-300
-              focus:outline-none
-              focus:ring-2
-              focus:ring-offset-2
-              focus:ring-gray-500
-            "
-          >
-            <!-- Heroicon name: solid/mail -->
-            <svg
-              class="-ml-0.5 mr-2 h-6 w-6"
-              xmlns="http://www.w3.org/2000/svg"
-              width="30"
-              height="30"
-              viewBox="0 0 24 24"
-              fill="#ffffff"
-            >
-              <path
-                d="M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7zm-1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
-              ></path>
-            </svg>
-            Добавить
-          </button>
-        </section>
-        <div class="filter flex items-start">
-          <input
-            type="text"
-            v-model="filter"
-            class="
-              filter__input
-              pr-10
-              mr-10
-              border-gray-300
-              text-gray-900
-              focus:outline-none focus:ring-gray-500 focus:border-gray-500
-              sm:text-sm
-              rounded-md
-            "
-          />
-          <div class="filter-btns">
-            <button
-              type="button"
-              @click="pageListTickers -= 1"
-              :class="{
-                'opacity-10':
-                  pageListTickers === 0 || filteredTickers.length === 0,
-              }"
-              class="
-                transition-opacity
-                duration-300
-                inline-flex
-                items-center
-                py-2
-                px-4
-                mr-3
-                border border-transparent
-                shadow-sm
-                text-sm
-                leading-4
-                font-medium
-                rounded-full
-                text-white
-                bg-gray-600
-                hover:bg-gray-700
-                transition-colors
-                duration-300
-                focus:outline-none
-                focus:ring-2
-                focus:ring-offset-2
-                focus:ring-gray-500
-              "
-            >
-              Назад
-            </button>
-            <button
-              type="button"
-              @click="pageListTickers += 1"
-              :class="{
-                'opacity-10':
-                  pageListTickers === maxItemsFilterTicketsList ||
-                  filteredTickers.length === 0,
-              }"
-              class="
-                transition-opacity
-                duration-300
-                inline-flex
-                items-center
-                py-2
-                px-4
-                border border-transparent
-                shadow-sm
-                text-sm
-                leading-4
-                font-medium
-                rounded-full
-                text-white
-                bg-gray-600
-                hover:bg-gray-700
-                transition-colors
-                duration-300
-                focus:outline-none
-                focus:ring-2
-                focus:ring-offset-2
-                focus:ring-gray-500
-              "
-            >
-              Вперед
-            </button>
-          </div>
-        </div>
+        <add-ticker :tickers="tickers" @addNewTicker="addTicker" />
+        <filter-tickers
+          :pageListTickers="pageListTickers"
+          :maxItemsFilterTicketsList="maxItemsFilterTicketsList"
+          :filteredTickers="filteredTickers"
+          @changeValueFilter="updateFilter"
+          @changeValuePageListTickers="updatePageListTickers"
+        />
+
         <div>
           <hr class="w-full border-t border-gray-600 my-4" />
           <dl
@@ -207,6 +23,7 @@
               @click="changeActiveTicket(item)"
               :class="{
                 'border-4': activeItemGraph === item,
+                'bg-red-100': item.isNoValidation === true,
               }"
               class="
                 bg-white
@@ -277,17 +94,24 @@
           </div>
           <hr class="w-full border-t border-gray-600 my-4" />
         </div>
-
-        <section v-if="activeItemGraph" class="relative">
+        <section
+          v-if="activeItemGraph && activeItemGraph.isNoValidation != true"
+          class="relative"
+        >
           <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
             {{ activeItemGraph.name }} - USD
           </h3>
-          <div class="flex items-end border-gray-600 border-b border-l h-64">
+          <div
+            class="flex items-end border-gray-600 border-b border-l h-64"
+            ref="graph"
+          >
             <div
               v-for="(item, index) in normalizeGraph"
-              class="bg-purple-800 border w-10 h-40"
+              class="bg-purple-800 border h-40"
               :key="index"
-              :style="{ height: `${item}%` }"
+              :style="{ height: `${item}%`, width: `${graphElementWidth}px` }"
+              graphElementWidth
+              ref="graphElement"
             ></div>
           </div>
           <button
@@ -328,20 +152,29 @@ import {
   socketSendAddTickers,
   updateTickers,
   socketSendRemoveTickers,
+  tickersSocketClosed,
 } from "./api/tickers";
+
+import addTicker from "./components/addTicker.vue";
+import filterTickers from "./components/filterTickers.vue";
 
 export default {
   name: "App",
 
+  components: {
+    addTicker,
+    filterTickers,
+  },
+
   data: () => ({
     filter: "",
-    tickerName: null,
-    messageAboutPreviouslyAddedTicker: false,
+
+    maxGraphElement: 1,
+    graphElementWidth: 36,
     activeItemGraph: null,
+
     tickers: [],
-    graph: [],
-    tickersNameViewedList: "",
-    tickersNameListHints: [],
+
     pageListTickers: 0,
   }),
 
@@ -365,6 +198,15 @@ export default {
       socketSendRemoveTickers(removeItem);
     },
 
+    // обновление фильтра
+    updateFilter(newValue) {
+      this.filter = newValue;
+    },
+
+    updatePageListTickers(newValue) {
+      this.pageListTickers = newValue;
+    },
+
     // смена элемента для отслеживания с помощью графика
     changeActiveTicket(item) {
       this.activeItemGraph = item;
@@ -372,49 +214,34 @@ export default {
       this.graph.push(this.activeItemGraph.course);
     },
 
-    // Обновление цен
-    updateTickersСurrency() {
-      this.tickers = updateTickers(this.tickers);
+    // вычисление максимального числа элементов графика
+    calculatedMaxElementGraph() {
+      if (!this.$refs.graph) {
+        return;
+      }
+
+      this.maxGraphElement = Math.floor(
+        this.$refs.graph.clientWidth / this.graphElementWidth
+      );
+      while (this.graph.length > this.maxGraphElement) {
+        this.graph.shift();
+      }
     },
 
     // добавление тикера
-    addTicket(name = this.tickerName) {
+    addTicker(name) {
       if (name) {
-        this.messageAboutPreviouslyAddedTicker = this.tickers.some((item) => {
-          return item.name === name;
-        });
+        const newTicker = {
+          id: Math.random(),
+          name: name.toUpperCase(),
+          course: "-",
+        };
 
-        if (!this.messageAboutPreviouslyAddedTicker) {
-          const newTicker = {
-            id: Math.random(),
-            name: name.toUpperCase(),
-            course: "-",
-          };
-
-          this.tickers.unshift(newTicker);
-          this.tickersNameListHints = [];
-          this.tickerName = null;
-
-          socketSendAddTickers(newTicker);
-        }
+        this.tickers.unshift(newTicker);
+        socketSendAddTickers(newTicker);
       }
 
       localStorage.setItem("ListTickers", JSON.stringify(this.tickers));
-    },
-
-    // Подсказки имён криптовалюты при вводе в input
-    hintsNamesCryptoCurrencyAdding() {
-      let valueInput = this.tickerName.toUpperCase();
-
-      let listSimilarNames = this.tickersNameList.filter((item) => {
-        return item.indexOf(valueInput) > -1;
-      });
-
-      listSimilarNames.sort((next, prev) => {
-        return next.length - prev.length;
-      });
-
-      this.tickersNameListHints = [...listSimilarNames.splice(0, 4)];
     },
   },
 
@@ -424,9 +251,13 @@ export default {
       const maxValue = Math.max(...this.graph);
       const minValue = Math.min(...this.graph);
 
-      return this.graph.map(
-        (price) => 50 + ((price - minValue) * 50) / (maxValue - minValue)
-      );
+      return this.graph.map((price) => {
+        if (maxValue === minValue) {
+          return 50;
+        }
+
+        return 50 + ((price - minValue) * 50) / (maxValue - minValue);
+      });
     },
 
     // Получаем максимальное число элементов в отфильтрованном списке
@@ -460,17 +291,26 @@ export default {
   },
 
   watch: {
-    tickers() {
-      this.updateTickersСurrency();
+    tickers(newValue) {
+      if (newValue && newValue.length) {
+        updateTickers(this.tickers);
+      }
+
+      if (newValue && !newValue.length) {
+        tickersSocketClosed();
+      }
     },
 
     activeItemGraph() {
       this.graph = [];
+      this.$nextTick(function () {
+        this.calculatedMaxElementGraph();
+      });
     },
 
     "activeItemGraph.course"(newValue) {
       this.graph.push(newValue);
-      if (this.graph.length > 25) {
+      while (this.graph.length > this.maxGraphElement) {
         this.graph.shift();
       }
     },
@@ -508,37 +348,32 @@ export default {
   mounted() {
     let vue = this;
 
-    (async function loadListCryptocurrency() {
-      const f = await fetch(
-        `https://min-api.cryptocompare.com/data/all/coinlist?summary=true&api_key=693b7faab687442509f13b97369bf90104019f8db4ee9c1838a73ed3a600e133`
-      );
-
-      const tickersList = await f.json();
-
-      vue.tickersNameList = Object.values(tickersList.Data).reduce(
-        (acc, item) => {
-          acc.push(item.Symbol);
-          return acc;
-        },
-        []
-      );
-    })();
-
     (function loadTickersLocalStorage() {
       let ListTickers = JSON.parse(localStorage.getItem("ListTickers"));
 
-      ListTickers = ListTickers.reduce((acc, ticker) => {
-        ticker.course = "-";
-        acc.push(ticker);
-        return acc;
-      }, []);
       if (ListTickers) {
-        vue.tickers = ListTickers;
-        ListTickers.forEach((ticker) => {
-          socketSendAddTickers(ticker);
-        });
+        ListTickers = ListTickers.reduce((acc, ticker) => {
+          ticker.course = "-";
+          acc.push(ticker);
+          delete ticker["isNoValidation"];
+          delete ticker["thereIsNoValidationToUSD"];
+
+          return acc;
+        }, []);
+        if (ListTickers) {
+          vue.tickers = ListTickers;
+          ListTickers.forEach((ticker) => {
+            socketSendAddTickers(ticker);
+          });
+        }
       }
     })();
+
+    window.addEventListener("resize", this.calculatedMaxElementGraph);
+  },
+
+  beforeDestroy() {
+    window.removeEventListener("resize", this.calculatedMaxElementGraph);
   },
 };
 </script>
