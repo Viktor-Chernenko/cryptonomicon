@@ -43,7 +43,7 @@
               text-gray-800
               cursor-pointer
             "
-            @click="addNewTicker"
+            @click="addNewTicker(tickerName)"
             v-for="(tickerName, index) in tickersNameListHints"
             :key="index"
           >
@@ -118,9 +118,15 @@ export default {
   },
 
   methods: {
-    addNewTicker() {
+    addNewTicker(selectTickerName) {
+      if (!selectTickerName) {
+        selectTickerName = this.tickerName;
+      } else {
+        this.tickerName = selectTickerName;
+      }
+
       if (!this.messageAboutPreviouslyAddedTicker) {
-        this.$emit("addNewTicker", this.tickerName);
+        this.$emit("addNewTicker", selectTickerName);
         this.tickersNameListHints = [];
         this.tickerName = null;
       }
