@@ -139,3 +139,15 @@ export default {
   },
 };
 </script>
+
+<style lang="scss" scoped>
+@media (max-width: 600px) {
+  .filter {
+    flex-direction: column;
+
+    &__input {
+      margin-bottom: 20px;
+    }
+  }
+}
+</style>
